@@ -1,0 +1,75 @@
+service: task-tracker-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    TASKS_TABLE: ${self:service}-tasks-${self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Scan
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TASKS_TABLE}"
+
+functions:
+  createTask:
+    handler: handlers/create_task.handler
+    events:
+      - http:
+          path: /tasks
+          method: post
+          cors: true
+
+  getTask:
+    handler: handlers/get_task.handler
+    events:
+      - http:
+          path: /tasks/{id}
+          method: get
+          cors: true
+
+  listTasks:
+    handler: handlers/list_tasks.handler
+    events:
+      - http:
+          path: /tasks
+          method: get
+          cors: true
+
+  updateTask:
+    handler: handlers/update_task.handler
+    events:
+      - http:
+          path: /tasks/{id}
+          method: put
+          cors: true
+
+  deleteTask:
+    handler: handlers/delete_task.handler
+    events:
+      - http:
+          path: /tasks/{id}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    TasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TASKS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: taskId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: taskId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
